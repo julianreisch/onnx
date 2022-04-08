@@ -9,10 +9,8 @@
 #include <cstring>
 #include <functional>
 #include <initializer_list>
-#include <iostream>
 #include <limits>
 #include <memory>
-#include <ostream>
 #include <set>
 #include <string>
 #include <tuple>
@@ -1059,70 +1057,7 @@ class OpSchemaRegistry final : public ISchemaRegistry {
 
   class OpSchemaRegisterOnce final {
    public:
-    OpSchemaRegisterOnce(OpSchema& op_schema, int opset_version_to_load=0) {
-      ONNX_TRY {
-        op_schema.Finalize();
-
-        auto& m = GetMapWithoutEnsuringRegistration();
-
-        auto& op_name = op_schema.Name();
-        auto& op_domain = op_schema.domain();
-        auto ver = op_schema.SinceVersion();
-        // Stops because the opset_version is higher than opset_version_to_load
-        if (opset_version_to_load != 0 && ver > opset_version_to_load) {
-          return;
-        }
-
-        if (m[op_name][op_domain].count(ver)) {
-          const auto& schema = m[op_name][op_domain][ver];
-          std::stringstream err;
-          err << "Trying to register schema with name " << op_name
-              << " (domain: " << op_domain << " version: " << ver
-              << ") from file " << op_schema.file() << " line "
-              << op_schema.line() << ", but it is already registered from file "
-              << schema.file() << " line " << schema.line() << std::endl;
-          fail_schema(err.str());
-        }
-        // Return early if schema for the targeted opset version has already been loaded
-        if (opset_version_to_load != 0 && !m[op_name][op_domain].empty()) {
-          return;
-        }
-
-        auto ver_range_map = DomainToVersionRange::Instance().Map();
-        auto ver_range_it = ver_range_map.find(op_domain);
-        if (ver_range_it == ver_range_map.end()) {
-          std::stringstream err;
-          err << "Trying to register schema with name " << op_name
-              << " (domain: " << op_domain << " version: " << ver
-              << ") from file " << op_schema.file() << " line "
-              << op_schema.line() << ", but its domain is not"
-              << " known by the checker." << std::endl;
-
-          fail_schema(err.str());
-        }
-        auto lower_bound_incl = ver_range_it->second.first;
-        auto upper_bound_incl = ver_range_it->second.second;
-        if (!(lower_bound_incl <= ver && upper_bound_incl >= ver)) {
-          std::stringstream err;
-          err << "Trying to register schema with name " << op_name
-              << " (domain: " << op_domain << " version: " << ver
-              << ") from file " << op_schema.file() << " line "
-              << op_schema.line() << ", but its version is not "
-              << "in the inclusive range [" << lower_bound_incl << ", "
-              << upper_bound_incl << "] (usually, this means you "
-              << "bumped the operator version but "
-              << "forgot to update the version range in DomainToVersionRange "
-              << "in onnx/defs/schema.h)." << std::endl;
-          fail_schema(err.str());
-        }
-
-        m[op_name][op_domain].insert(
-            std::pair<int, OpSchema&&>(ver, std::move(op_schema)));
-
-      } ONNX_CATCH (const std::exception& e) {
-        ONNX_HANDLE_EXCEPTION([&]() { std::cerr << "Schema error: " << e.what() << std::endl; });
-      }
-    }
+    OpSchemaRegisterOnce(OpSchema& op_schema, int opset_version_to_load=0);
   };
 
   // Return the latest schema for an operator in specified domain.
